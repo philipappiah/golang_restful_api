@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"newsfeeder/database"
 	"newsfeeder/httpd/handler"
-
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -86,9 +86,14 @@ func handleRequests() {
 
 func main() {
 
-	r := gin.Default()
-	r.GET("/ping", handler.PingGet())
-	r.GET("/newsfeed", handler.NewsFeedGet())
-	r.POST("/newsfeed", handler.NewsFeedPost())
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	database.Init()
+	router := gin.Default()
+
+	router.GET("/ping", handler.PingGet())
+	router.GET("/newsfeeds", handler.GetNewsFeeds)
+	router.GET("/newsfeed/:id", handler.GetNewsFeed)
+	router.PATCH("/newsfeed/:id", handler.UpdateNewsFeed)
+	router.POST("/newsfeeds", handler.CreateNewsFeed)
+	router.DELETE("/newsfeed/:id", handler.DeleteNewsFeed)
+	router.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }

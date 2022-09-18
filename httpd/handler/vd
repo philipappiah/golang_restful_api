@@ -1,0 +1,75 @@
+package handler
+
+import (
+	"net/http"
+	"newsfeeder/database"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type NewsFeed struct {
+	ID        primitive.ObjectID `bson:"_id"`
+	CreatedAt time.Time          `bson:"created_at"`
+	UpdatedAt time.Time          `bson:"updated_at"`
+	Title     string             `bson:"title"`
+	Content   string             `bson:"content"`
+}
+
+var collection = database.Collection
+var ctx = database.Ctx
+
+func createFeed(newsfeed *NewsFeed) error {
+
+	_, err := collection.InsertOne(ctx, newsfeed)
+
+	return err
+}
+
+func FilterNewsFeeds(filter interface{}) ([]*NewsFeed, error) {
+	// A slice of NewsFeeds for storing the decoded documents
+	var NewsFeeds []*NewsFeed
+
+	cur, err := collection.Find(ctx, filter)
+	if err != nil {
+		return NewsFeeds, err
+	}
+
+	for cur.Next(ctx) {
+		var t NewsFeed
+		err := cur.Decode(&t)
+		if err != nil {
+			return NewsFeeds, err
+		}
+
+		NewsFeeds = append(NewsFeeds, &t)
+	}
+
+	if err := cur.Err(); err != nil {
+		return NewsFeeds, err
+	}
+
+	// once exhausted, close the cursor
+	cur.Close(ctx)
+
+	if len(NewsFeeds) == 0 {
+		return NewsFeeds, mongo.ErrNoDocuments
+	}
+
+	return NewsFeeds, nil
+}
+
+func GetNewsFeed(c *gin.Context) {
+
+	// passing bson.D{{}} matches all documents in the collection
+	filter := bson.D{{}}
+	var feeds, _ = FilterNewsFeeds(filter)
+
+	c.JSON(http.StatusOK, map[string][]*NewsFeed{
+		"items": feeds,
+	})
+
+}
