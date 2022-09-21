@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"newsfeeder/database"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,21 +21,18 @@ type NewsFeed struct {
 	CreatedAt time.Time          `bson:"created_at"`
 	UpdatedAt time.Time          `bson:"updated_at"`
 	Title     string             `bson:"title"`
+	Priority  int                `bson:"priority"`
 	Content   string             `bson:"content"`
 }
 
-func createFeed(newsfeed *NewsFeed) error {
-
-	_, err := database.Collection.InsertOne(database.Ctx, newsfeed)
-
-	return err
-}
-
-func FilterNewsFeeds(filter interface{}) ([]*NewsFeed, error) {
+func FilterNewsFeeds(filter interface{}, paginateMap map[string]int64, sortCriteria string) ([]*NewsFeed, error) {
 	// A slice of NewsFeeds for storing the decoded documents
 	var NewsFeeds []*NewsFeed
 
-	cur, err := database.Collection.Find(database.Ctx, filter)
+	skip := (paginateMap["page"] - 1) * paginateMap["limit"]
+	opts := options.Find().SetLimit(paginateMap["limit"]).SetSkip(skip).SetSort(bson.D{{Key: "priority", Value: 1}})
+
+	cur, err := database.Collection.Find(database.Ctx, filter, opts)
 	if err != nil {
 		return NewsFeeds, err
 	}
@@ -63,11 +61,68 @@ func FilterNewsFeeds(filter interface{}) ([]*NewsFeed, error) {
 	return NewsFeeds, nil
 }
 
+func ParseFilter(filterList map[string]string, c *gin.Context) {
+
+	var gte, gt, lte, lt = c.Query("gte"), c.Query("gt"), c.Query("lte"), c.Query("lt")
+
+	if gte != "" {
+		filterList["$gte"] = gte
+	}
+
+	if gt != "" {
+		filterList["$gt"] = gt
+	}
+
+	if lte != "" {
+		filterList["$lte"] = lte
+	}
+
+	if lt != "" {
+		filterList["$lt"] = lt
+	}
+	filterList["$lt"] = "hello"
+
+}
+
 func GetNewsFeeds(c *gin.Context) {
 
 	// passing bson.D{{}} matches all documents in the collection
+
+	paginateMap := map[string]int64{
+		"limit": 100, // default query limit = 100
+		"page":  1,   // default page skip = 1
+	}
+
+	var sortCriteria = "-CreatedAt"
+
 	filter := bson.D{{}}
-	var feeds, _ = FilterNewsFeeds(filter)
+
+	// filter := bson.D{{"priority", bson.D{{"$gt", 2}}}}
+
+	//data, _ := bson.Marshal(c.Request.URL.Query())
+
+	if c.Query("sort") != "" {
+		sortCriteria = c.Query("sort")
+	}
+
+	fmt.Println(c.Query("sort"))
+
+	if c.Query("limit") != "" {
+		limit, err := strconv.ParseInt(c.Query("limit"), 10, 64)
+		if err == nil {
+			paginateMap["limit"] = limit
+		}
+
+	}
+
+	if c.Query("page") != "" {
+		page, err := strconv.ParseInt(c.Query("page"), 10, 64)
+		if err == nil {
+			paginateMap["page"] = page
+		}
+	}
+
+	var feeds, _ = FilterNewsFeeds(filter, paginateMap, sortCriteria)
 
 	c.JSON(http.StatusOK, map[string][]*NewsFeed{
 		"items": feeds,
@@ -192,10 +247,11 @@ func CreateNewsFeed(c *gin.Context) {
 		fmt.Println(err.Error())
 		panic("Failed to connect to database")
 	}
-	c.JSON(http.StatusOK, map[string]string{
-		"ID":      tobson.ID.Hex(),
-		"Title":   tobson.Title,
-		"Content": tobson.Content,
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"ID":       tobson.ID.Hex(),
+		"Title":    tobson.Title,
+		"Content":  tobson.Content,
+		"Priority": tobson.Priority,
 	})
 
 }
