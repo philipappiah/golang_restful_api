@@ -1,0 +1,30 @@
+version: "3"
+services:
+       backend:
+           container_name: golangapi-backend
+           image: latest/golangapi-backend
+           environment: 
+              NODE_ENV: development
+              BASE_URL: http://localhost
+              PORT: 8080
+              MONGO_URL: mongodb://mongo:27017/mydb
+              API_VERSION: v1
+              
+
+           restart: always
+           build:
+              context: ./backend
+              dockerfile: ./Dockerfile
+           ports:
+             - "8080:8081"
+           links:
+             - mongo
+       mongo:
+             container_name: mongo
+             image: mongo
+             volumes:
+               - ./data:/data/db
+             ports:
+               - '27017:27017'
+
+      
