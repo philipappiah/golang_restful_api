@@ -137,6 +137,7 @@ func GetNewsFeed(c *gin.Context) {
 	param_id := c.Param("id")
 	//632769192dece7a17f4c21d6
 	objID, _ := primitive.ObjectIDFromHex(param_id)
+
 	var result NewsFeed
 	var err = database.Collection.FindOne(database.Ctx, bson.M{"_id": objID}).Decode(&result)
 	if err != nil {
