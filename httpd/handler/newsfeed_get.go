@@ -61,29 +61,6 @@ func FilterNewsFeeds(filter interface{}, paginateMap map[string]int64, sortCrite
 	return NewsFeeds, nil
 }
 
-func ParseFilter(filterList map[string]string, c *gin.Context) {
-
-	var gte, gt, lte, lt = c.Query("gte"), c.Query("gt"), c.Query("lte"), c.Query("lt")
-
-	if gte != "" {
-		filterList["$gte"] = gte
-	}
-
-	if gt != "" {
-		filterList["$gt"] = gt
-	}
-
-	if lte != "" {
-		filterList["$lte"] = lte
-	}
-
-	if lt != "" {
-		filterList["$lt"] = lt
-	}
-	filterList["$lt"] = "hello"
-
-}
-
 func GetNewsFeeds(c *gin.Context) {
 
 	// passing bson.D{{}} matches all documents in the collection
